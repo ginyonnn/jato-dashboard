@@ -100,7 +100,7 @@ export default function Dashboard() {
             {/* !!! PENTING: Ganti URL ini dengan URL STREAMING MJPEG kamera Anda !!! */}
             {/* Ini BUKAN URL RTSP. Cari "MJPEG stream URL" untuk model kamera Anda. */}
             <img 
-              src="http://172.20.10.4:8080/video_feed"
+              src="http://172.20.10.4:8080/stream/image.jpg"
               alt="Live camera stream. If this is not showing, please ensure you are on the same local network as the camera and the MJPEG stream URL is correct." 
               className="w-full h-auto"
               onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
