@@ -102,7 +102,7 @@ export default function Dashboard() {
             */}
             <img 
               src="http://172.20.10.4:8080/video_feed" 
-              alt="Live camera stream" 
+              alt="Live camera stream..." 
               className="w-full h-auto"
               // Handler onError untuk menampilkan pesan jika stream gagal dimuat
               onError={(e) => { 
@@ -113,11 +113,11 @@ export default function Dashboard() {
             {/* Pesan yang akan muncul jika gambar gagal dimuat */}
             <div style={{display: 'none'}} className="p-8 text-center text-gray-400">
                 <p>Could not load live stream.</p>
-                <p className="text-xs">Possible issues:</p>
-                <ul className="text-xs list-disc list-inside mt-2">
-                    <li>Is the main_gateway.py script running on the Raspberry Pi?</li>
-                    <li>Are your computer and Raspberry Pi on the same Wi-Fi network?</li>
-                    <li>Is the IP address in the 'src' attribute correct?</li>
+                <p className="text-xs mt-2">Possible issues:</p>
+                <ul className="text-xs list-disc list-inside mt-1">
+                    <li>Is main_gateway.py running on the Raspberry Pi?</li>
+                    <li>Are you on the same local network as the camera?</li>
+                    <li>Is the stream URL in the dashboard code correct?</li>
                 </ul>
             </div>
           </div>
@@ -191,4 +191,3 @@ function LogItem({ log }) {
     </div>
   );
 }
-
