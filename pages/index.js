@@ -97,17 +97,28 @@ export default function Dashboard() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
           <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700">
-            {/* !!! PENTING: Ganti URL ini dengan URL STREAMING MJPEG kamera Anda !!! */}
-            {/* Ini BUKAN URL RTSP. Cari "MJPEG stream URL" untuk model kamera Anda. */}
+            {/*
+              Pastikan alamat IP ini adalah alamat IP Raspberry Pi Anda.
+            */}
             <img 
-              src="http://172.20.10.4::8080/video_feed"
-              alt="Live camera stream. If this is not showing, please ensure you are on the same local network as the camera and the MJPEG stream URL is correct." 
+              src="http://172.20.10.4:8080/video_feed" 
+              alt="Live camera stream" 
               className="w-full h-auto"
-              onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
+              // Handler onError untuk menampilkan pesan jika stream gagal dimuat
+              onError={(e) => { 
+                e.currentTarget.style.display='none'; 
+                e.currentTarget.nextSibling.style.display='block'; 
+              }}
             />
+            {/* Pesan yang akan muncul jika gambar gagal dimuat */}
             <div style={{display: 'none'}} className="p-8 text-center text-gray-400">
                 <p>Could not load live stream.</p>
-                <p className="text-xs">Please check the MJPEG URL in the code and your network connection.</p>
+                <p className="text-xs">Possible issues:</p>
+                <ul className="text-xs list-disc list-inside mt-2">
+                    <li>Is the main_gateway.py script running on the Raspberry Pi?</li>
+                    <li>Are your computer and Raspberry Pi on the same Wi-Fi network?</li>
+                    <li>Is the IP address in the 'src' attribute correct?</li>
+                </ul>
             </div>
           </div>
         </div>
