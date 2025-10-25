@@ -101,7 +101,7 @@ export default function Dashboard() {
               Pastikan alamat IP ini adalah alamat IP Raspberry Pi Anda.
             */}
             <img 
-              src="http://jato.cloudflareaccess.com/video_feed" 
+              src="https://live-feed.jato.cloudflareaccess.com/video_feed" 
               alt="Live camera stream" 
               className="w-full h-auto"
               // Handler onError untuk menampilkan pesan jika stream gagal dimuat
