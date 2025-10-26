@@ -9,7 +9,9 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
-import ReactPlayer from 'react-player/lazy';
+import dynamic from 'next/dynamic';
+
+const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
 
 // --- BAGIAN 2: Konfigurasi Firebase ---
 const firebaseConfig = {
