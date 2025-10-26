@@ -1,18 +1,17 @@
 // ==============================================================================
 // File:        pages/index.js
-// Deskripsi:   Halaman utama untuk JATO Framework Dashboard.
-//              Menampilkan data real-time dari Firebase dan streaming
-//              video langsung dari Kamera IP.
-// Versi:       2.0 (Final - Perbaikan Bug & Penambahan Fitur)
+// Deskripsi:   Dasbor JATO dengan Live Stream HLS melalui React Player.
+// Versi:       2.1 (Final - Perbaikan Struktur Komponen)
 // ==============================================================================
 
+// --- BAGIAN 1: Impor Library ---
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+import ReactPlayer from 'react-player/lazy';
 
-// --- BAGIAN 1: KONFIGURASI FIREBASE ---
-// Next.js akan secara otomatis memuat variabel dari file .env.local di sini.
+// --- BAGIAN 2: Konfigurasi Firebase ---
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -27,43 +26,83 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// --- BAGIAN 2: KOMPONEN UTAMA DASBOR ---
+// --- BAGIAN 3: DEFINISI KOMPONEN PEMBANTU (Helper Components) ---
+// Komponen-komponen ini harus didefinisikan di luar komponen utama.
+
+function StatusCard({ title, value }) {
+  return (
+    <div className="bg-gray-800 rounded-lg p-6 flex flex-col justify-between">
+      <p className="text-gray-400 text-sm mb-2">{title}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function MultiDetectionCard({ title, detections }) {
+  const filtered = detections?.filter(d => parseFloat(d.confidence) >= 0.5) || [];
+  return (
+    <div className="bg-gray-800 rounded-lg p-6">
+      <p className="text-gray-400 text-sm mb-2">{title}</p>
+      {filtered.length > 0 ? (
+        <div className="space-y-1">
+          {filtered.map((d, i) => (
+            <p key={i} className={`text-xl font-bold ${d.label.toLowerCase().includes('fall') ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
+              {d.label} ({d.confidence})
+            </p>
+          ))}
+        </div>
+      ) : <p className="text-xl font-bold text-gray-500">None</p>}
+    </div>
+  );
+}
+
+function LogItem({ log }) {
+  const filtered = log.detections?.filter(d => parseFloat(d.confidence) >= 0.5) || [];
+  const hasFall = filtered.some(d => d.label.toLowerCase().includes('fall'));
+  return (
+    <div className="grid grid-cols-3 gap-4 items-center p-2 rounded-md text-sm hover:bg-gray-700">
+      <div>
+        <p className="font-semibold">{log.jato_decision}</p>
+        <p className="text-xs text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</p>
+      </div>
+      <p>{log.end_to_end_latency_ms !== 'N/A' ? `${parseFloat(log.end_to_end_latency_ms).toFixed(0)} ms` : 'N/A'}</p>
+      <div className={hasFall ? 'text-red-400 font-semibold' : 'text-gray-300'}>
+        {filtered.length > 0 ? filtered.map(d => `${d.label} (${d.confidence})`).join(', ') : 'None'}
+      </div>
+    </div>
+  );
+}
+
+
+// --- BAGIAN 4: KOMPONEN UTAMA DASBOR (Komponen Default Export) ---
 export default function Dashboard() {
-  // State untuk menyimpan data real-time dari Firebase
   const [status, setStatus] = useState(null);
   const [logs, setLogs] = useState([]);
+  
+  // State untuk mencegah hydration error pada React Player
+  const [hasWindow, setHasWindow] = useState(false);
 
-  // useEffect "hook" untuk berlangganan data Firebase saat komponen pertama kali dimuat
   useEffect(() => {
-    // Referensi ke 'node' data di Firebase yang ingin kita 'dengarkan'
+    // Jalankan listener Firebase
     const statusRef = ref(database, 'status');
     const logsQuery = query(ref(database, 'logs'), orderByChild('timestamp'), limitToLast(10));
-
-    // Membuat 'listener' untuk data status. 'onValue' akan terpicu
-    // setiap kali data di 'statusRef' berubah.
-    const unsubscribeStatus = onValue(statusRef, (snapshot) => {
-      const data = snapshot.val();
-      setStatus(data);
-    });
-
-    // Membuat 'listener' untuk 10 log peristiwa terakhir
+    const unsubscribeStatus = onValue(statusRef, (snapshot) => setStatus(snapshot.val()));
     const unsubscribeLogs = onValue(logsQuery, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Mengubah objek dari Firebase menjadi array, lalu membaliknya
-        // agar data terbaru selalu berada di paling atas.
-        const formattedLogs = Object.values(data).reverse();
-        setLogs(formattedLogs);
+      if (snapshot.val()) {
+        setLogs(Object.values(snapshot.val()).reverse());
       }
     });
 
-    // Fungsi 'cleanup'. Ini akan dijalankan saat komponen ditutup
-    // untuk menghentikan 'listener', mencegah kebocoran memori.
+    // Cek jika window sudah tersedia (untuk SSR)
+    if (typeof window !== "undefined") {
+        setHasWindow(true);
+    }
+    
     return () => {
       unsubscribeStatus();
       unsubscribeLogs();
     };
-  }, []); // Array kosong `[]` berarti `useEffect` hanya berjalan sekali saat komponen dimuat.
+  }, []);
 
   return (
     <div className="bg-gray-900 text-white min-h-screen p-4 sm:p-8 font-sans">
@@ -85,47 +124,31 @@ export default function Dashboard() {
 
       {/* Grid untuk Status Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatusCard title="JATO's Last Decision" value={status?.jato_decision || 'Waiting for data...'} />
-        <StatusCard title="End-to-End Latency" value={status?.end_to_end_latency_ms !== 'N/A' && status?.end_to_end_latency_ms ? `${parseFloat(status.end_to_end_latency_ms).toFixed(2)} ms` : 'N/A'} />
+        <StatusCard title="JATO's Last Decision" value={status?.jato_decision || 'N/A'} />
+        <StatusCard title="End-to-End Latency" value={status?.end_to_end_latency_ms ? `${parseFloat(status.end_to_end_latency_ms).toFixed(2)} ms` : 'N/A'} />
         <StatusCard title="Source Server" value={status?.source_server || 'N/A'} />
         <MultiDetectionCard title="Last Detection(s) [Conf ≥ 0.5]" detections={status?.detections} />
       </div>
 
-      {/* Bagian Baru untuk Live Stream dan Log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Kolom Kiri: Live Stream */}
+        {/* Kolom Kiri: Live Stream HLS */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
-          <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700">
-            {/*
-              Pastikan alamat IP ini adalah alamat IP Raspberry Pi Anda.
-            */}
-            <img 
-              src="https://172.20.10.4/video_feed" 
-              alt="Live camera stream" 
-              className="w-full h-auto"
-              // Handler onError untuk menampilkan pesan jika stream gagal dimuat
-              onError={(e) => { 
-                e.currentTarget.style.display='none'; 
-                e.currentTarget.nextSibling.style.display='block'; 
-              }}
-            />
-            {/* Pesan yang akan muncul jika gambar gagal dimuat */}
-            <div style={{display: 'none'}} className="p-8 text-center text-gray-400">
-                <p>Could not load live stream.</p>
-                <p className="text-xs mt-2">Possible issues:</p>
-                <ul className="text-xs list-disc list-inside mt-1">
-                    <li>Is main_gateway.py running on the Raspberry Pi?</li>
-                    <li>Are you on the same local network as the camera?</li>
-                    <li>Is the stream URL in the dashboard code correct?</li>
-                </ul>
-            </div>
+          <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video">
+            {hasWindow && (
+                <ReactPlayer
+                  url="https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8"
+                  playing={true} muted={true} controls={true} width="100%" height="100%"
+                  config={{ file: { forceHLS: true } }}
+                />
+            )}
           </div>
         </div>
 
         {/* Kolom Kanan: Event Log */}
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Event Log (Last 10 Events)</h2>
+          {/* ... (Isi dari Event Log tetap sama) ... */}
           <div className="space-y-2">
             <div className="grid grid-cols-3 gap-4 text-xs text-gray-400 font-bold border-b border-gray-600 pb-2">
               <p>Time & Decision</p><p>Latency</p><p>Detection(s)</p>
@@ -133,60 +156,6 @@ export default function Dashboard() {
             {logs.length > 0 ? logs.map((log, index) => <LogItem key={index} log={log} />) : <p className="text-gray-500 pt-4">Waiting for events...</p>}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// --- BAGIAN 3: KOMPONEN PEMBANTU (Untuk Kebersihan Kode) ---
-
-// Komponen Kartu Status Sederhana
-function StatusCard({ title, value, color = 'text-white' }) {
-  return (
-    <div className="bg-gray-800 rounded-lg p-6 flex flex-col justify-between">
-      <p className="text-gray-400 text-sm mb-2">{title}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
-}
-
-// Komponen Kartu Deteksi (untuk menampilkan multiple detections)
-function MultiDetectionCard({ title, detections }) {
-  const filtered = detections?.filter(d => parseFloat(d.confidence) >= 0.5) || [];
-  const hasFall = filtered.some(d => d.label.toLowerCase().includes('fall'));
-
-  return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <p className="text-gray-400 text-sm mb-2">{title}</p>
-      {filtered.length > 0 ? (
-        <div className="space-y-1">
-          {filtered.map((d, i) => (
-            <p key={i} className={`text-xl font-bold ${d.label.toLowerCase().includes('fall') ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
-              {d.label} ({d.confidence})
-            </p>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xl font-bold text-gray-500">None</p>
-      )}
-    </div>
-  );
-}
-
-// Komponen untuk setiap item di dalam Log
-function LogItem({ log }) {
-  const filtered = log.detections?.filter(d => parseFloat(d.confidence) >= 0.5) || [];
-  const hasFall = filtered.some(d => d.label.toLowerCase().includes('fall'));
-
-  return (
-    <div className="grid grid-cols-3 gap-4 items-center p-2 rounded-md text-sm hover:bg-gray-700">
-      <div>
-        <p className="font-semibold">{log.jato_decision}</p>
-        <p className="text-xs text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</p>
-      </div>
-      <p>{log.end_to_end_latency_ms !== 'N/A' ? `${parseFloat(log.end_to_end_latency_ms).toFixed(0)} ms` : 'N/A'}</p>
-      <div className={hasFall ? 'text-red-400 font-semibold' : 'text-gray-300'}>
-        {filtered.length > 0 ? filtered.map(d => `${d.label} (${d.confidence})`).join(', ') : 'None'}
       </div>
     </div>
   );
