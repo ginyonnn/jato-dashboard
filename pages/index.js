@@ -5,10 +5,11 @@
 // ==============================================================================
 
 // --- BAGIAN 1: Impor Library ---
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+import ReactPlayer from 'react-player';
 import dynamic from 'next/dynamic';
 
 const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
@@ -78,13 +79,19 @@ function LogItem({ log }) {
 
 // --- BAGIAN 4: KOMPONEN UTAMA DASBOR (Komponen Default Export) ---
 export default function Dashboard() {
+  // (useState untuk status dan logs tetap sama)
   const [status, setStatus] = useState(null);
   const [logs, setLogs] = useState([]);
   
+  // State untuk melacak apakah kita berada di sisi klien (wajib untuk video)
+  const [isClient, setIsClient] = useState(false);
+
   // State untuk mencegah hydration error pada React Player
   const [hasWindow, setHasWindow] = useState(false);
 
   useEffect(() => {
+    // Tandai bahwa kita sekarang berada di sisi klien setelah render pertama
+     setIsClient(true);
     // Jalankan listener Firebase
     const statusRef = ref(database, 'status');
     const logsQuery = query(ref(database, 'logs'), orderByChild('timestamp'), limitToLast(10));
@@ -105,6 +112,9 @@ export default function Dashboard() {
       unsubscribeLogs();
     };
   }, []);
+
+  // URL Stream (tempatkan di satu tempat agar mudah diubah)
+  const streamUrl = "https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8";
 
   return (
     <div className="bg-gray-900 text-white min-h-screen p-4 sm:p-8 font-sans">
@@ -138,25 +148,37 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
           <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video relative">
             {/* 
-              PERUBAHAN UTAMA: Komponen ReactPlayer HANYA di-render 
-              jika kita 100% yakin kita berada di sisi klien.
-            */}
-            <ReactPlayer
-              url="https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8" // JANGAN LUPA UPDATE INI
-              playing={true}
-              muted={true}
-              controls={true}
-              width="100%"
-              height="100%"
-              onError={e => console.log('ReactPlayer Error', e)}
-              config={{
-                file: { forceHLS: true }
-              }}
-              // Tampilkan placeholder loading bawaan dari ReactPlayer
-              fallback={<div className="absolute inset-0 flex items-center justify-center"><p className="text-gray-400">Loading Stream...</p></div>}
-            />
-          </div>
-        </div>
+               KITA HANYA AKAN MERENDER PLAYER INI JIKA KITA SUDAH YAKIN
+               BERADA DI SISI KLIEN UNTUK MENGHINDARI SEMUA ERROR SSR.
+             */}
+             {isClient ? (
+               <ReactPlayer
+                 url={streamUrl}
+                 playing={true}
+                 muted={true}
+                 controls={true}
+                 width="100%"
+                 height="100%"
+                 // Konfigurasi ini memberitahu React Player untuk secara eksplisit
+                 // menggunakan library hls.js yang lebih kuat.
+                 config={{
+                   file: {
+                     forceHLS: true,
+                     attributes: {
+                        crossOrigin: 'anonymous',
+                     },
+                   },
+                 }}
+                 // Pesan jika ada error saat memuat video
+                 onError={e => console.error("ReactPlayer Error:", e)}
+               />
+             ) : (
+               <div className="flex items-center justify-center h-full">
+                 <p className="text-gray-400">Loading Video Player...</p>
+               </div>
+             )}
+           </div>
+         </div>
 
         {/* Kolom Kanan: Event Log */}
         <div className="bg-gray-800 rounded-lg p-6">
