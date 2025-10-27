@@ -141,31 +141,20 @@ export default function Dashboard() {
               PERUBAHAN UTAMA: Komponen ReactPlayer HANYA di-render 
               jika kita 100% yakin kita berada di sisi klien.
             */}
-            {isClient ? (
-              <ReactPlayer
-                url="https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8"
-                playing={true}   
-                muted={true}     
-                controls={true}  
-                width="100%"
-                height="100%"
-                // Tambahkan fallback error handling
-                onError={e => console.error('ReactPlayer Error', e)}
-                config={{
-                  file: {
-                    hlsOptions: {
-                      // Opsi ini bisa membantu jika stream sering berhenti
-                      liveSyncDurationCount: 7,
-                    }
-                  },
-                }}
-              />
-            ) : (
-              // Tampilkan pesan loading saat rendering di server
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-gray-400">Loading Player...</p>
-              </div>
-            )}
+            <ReactPlayer
+              url="https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8" // JANGAN LUPA UPDATE INI
+              playing={true}
+              muted={true}
+              controls={true}
+              width="100%"
+              height="100%"
+              onError={e => console.log('ReactPlayer Error', e)}
+              config={{
+                file: { forceHLS: true }
+              }}
+              // Tampilkan placeholder loading bawaan dari ReactPlayer
+              fallback={<div className="absolute inset-0 flex items-center justify-center"><p className="text-gray-400">Loading Stream...</p></div>}
+            />
           </div>
         </div>
 
