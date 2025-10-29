@@ -88,6 +88,13 @@ export default function Dashboard() {
   // State untuk mencegah hydration error pada React Player
   const [hasWindow, setHasWindow] = useState(false);
 
+  // --- STATE BARU UNTUK VIDEO PLAYER ---
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [videoError, setVideoError] = useState(null);
+  
+  // URL di-hardcode dulu, pastikan ini URL ngrok terbaru
+  const streamUrl = "https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8";
+
   useEffect(() => {
     // Tandai bahwa kita sekarang berada di sisi klien setelah render pertama
      setIsClient(true);
@@ -142,39 +149,47 @@ export default function Dashboard() {
         {/* Kolom Kiri: Live Stream (DENGAN REVISI KUNCI) */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
-          <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video relative">
+          <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video relative flex items-center justify-center">
             {/* 
                KITA HANYA AKAN MERENDER PLAYER INI JIKA KITA SUDAH YAKIN
                BERADA DI SISI KLIEN UNTUK MENGHINDARI SEMUA ERROR SSR.
              */}
-             {isClient ? (
-               <ReactPlayer
-                 url="/api/video_feed"
-                 playing={true}
-                 muted={true}
-                 controls={true}
-                 width="100%"
-                 height="100%"
-                 // Konfigurasi ini memberitahu React Player untuk secara eksplisit
-                 // menggunakan library hls.js yang lebih kuat.
-                 config={{
-                   file: {
-                     forceHLS: true,
-                     attributes: {
-                        crossOrigin: 'anonymous',
-                     },
-                   },
-                 }}
-                 // Pesan jika ada error saat memuat video
-                 onError={e => console.error("ReactPlayer Error:", e)}
-               />
-             ) : (
-               <div className="flex items-center justify-center h-full">
-                 <p className="text-gray-400">Loading Video Player...</p>
-               </div>
-             )}
-           </div>
-         </div>
+             
+            <ReactPlayer
+              url={streamUrl}
+              playing={true}
+              muted={true}
+              controls={false}
+              width="100%"
+              height="100%"
+              // Fungsi ini akan dipanggil saat player siap memutar video
+              onReady={() => {
+                console.log("Player is ready!");
+                setIsVideoReady(true);
+                setVideoError(null);
+              }}
+              // Fungsi ini akan dipanggil jika terjadi error
+              onError={(e, data) => {
+                console.error('ReactPlayer Error', e, data);
+                setVideoError('Stream error or timed out.');
+                setIsVideoReady(false);
+              }}
+              />
+              {/* Tampilkan overlay status berdasarkan state */}
+              {!isVideoReady && (
+                <div className="absolute inset-0 flex items-center justify-center text-center p-4">
+                  {videoError ? (
+                        <p className="text-red-500">{videoError}</p>
+                  ) : (
+                      <p className="text-gray-400 animate-pulse">Connecting to live stream...</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Tampilkan info URL di bawah video untuk debugging */}
+            <p className="text-xs text-gray-500 mt-2">Streaming from: {streamUrl}</p>
+        </div>
+
 
         {/* Kolom Kanan: Event Log */}
         <div className="bg-gray-800 rounded-lg p-6">
