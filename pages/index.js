@@ -112,9 +112,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // URL Stream (tempatkan di satu tempat agar mudah diubah)
-  const streamUrl = "https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8";
-
   return (
     <div className="bg-gray-900 text-white min-h-screen p-4 sm:p-8 font-sans">
       <Head>
@@ -152,7 +149,7 @@ export default function Dashboard() {
              */}
              {isClient ? (
                <ReactPlayer
-                 url={streamUrl}
+                 url="/api/video_feed"
                  playing={true}
                  muted={true}
                  controls={true}
