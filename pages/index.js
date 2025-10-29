@@ -148,43 +148,22 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
           <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video relative flex items-center justify-center">
             {/* 
-               KITA HANYA AKAN MERENDER PLAYER INI JIKA KITA SUDAH YAKIN
-               BERADA DI SISI KLIEN UNTUK MENGHINDARI SEMUA ERROR SSR.
-             */}
-             
-            <ReactPlayer
-              url="/api/video_feed"
-              playing={true}
-              muted={true}
-              controls={true}
-              width="100%"
-              height="100%"
-              // Fungsi ini akan dipanggil saat player siap memutar video
-              onReady={() => {
-                console.log("Player is ready!");
-                setIsVideoReady(true);
-                setVideoError(null);
-              }}
-              // Fungsi ini akan dipanggil jika terjadi error
-              onError={(e, data) => {
-                console.error('ReactPlayer Error', e, data);
-                setVideoError('Stream error or timed out.');
-                setIsVideoReady(false);
-              }}
+              Sekarang kita hanya render <ReactPlayer> jika 'isClient' adalah true.
+              Ini mencegahnya dirender di sisi server (saat 'build').
+            */}
+            {isClient ? (
+              <ReactPlayer
+                url="/api/video_feed" // Menggunakan API Proxy kita
+                playing={true} muted={true} controls={true} width="100%" height="100%"
+                onError={e => console.error('ReactPlayer Error:', e)}
+                // Menampilkan placeholder saat mem-buffer
+                fallback={<div className="flex items-center justify-center h-full"><p className="text-gray-400">Buffering stream...</p></div>}
               />
-              {/* Tampilkan overlay status berdasarkan state */}
-              {!isVideoReady && (
-                <div className="absolute inset-0 flex items-center justify-center text-center p-4">
-                  {videoError ? (
-                        <p className="text-red-500">{videoError}</p>
-                  ) : (
-                      <p className="text-gray-400 animate-pulse">Connecting to live stream...</p>
-                  )}
-                </div>
-              )}
-            </div>
-            {/* Tampilkan info URL di bawah video untuk debugging */}
-            <p className="text-xs text-gray-500 mt-2">Streaming from: {streamUrl}</p>
+            ) : (
+              // Menampilkan ini selama Server-Side Rendering (sebelum hidrasi)
+              <div className="flex items-center justify-center h-full"><p className="text-gray-400">Loading Player...</p></div>
+            )}
+          </div>
         </div>
 
 
