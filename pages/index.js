@@ -92,9 +92,6 @@ export default function Dashboard() {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(null);
   
-  // URL di-hardcode dulu, pastikan ini URL ngrok terbaru
-  const streamUrl = "https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8";
-
   useEffect(() => {
     // Tandai bahwa kita sekarang berada di sisi klien setelah render pertama
      setIsClient(true);
@@ -156,10 +153,10 @@ export default function Dashboard() {
              */}
              
             <ReactPlayer
-              url={streamUrl}
+              url="/api/video_feed"
               playing={true}
               muted={true}
-              controls={false}
+              controls={true}
               width="100%"
               height="100%"
               // Fungsi ini akan dipanggil saat player siap memutar video

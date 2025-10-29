@@ -1,34 +1,38 @@
 // File: pages/api/video_feed.js
-// Deskripsi: API Route ini bertindak sebagai proxy untuk video stream dari ngrok.
-// Kita butuh 'axios' karena lebih baik dalam menangani stream biner
+// Deskripsi: API Route ini bertindak sebagai proxy pintar untuk
+// mengambil stream dari ngrok dan meneruskannya ke frontend.
 
 import axios from 'axios';
 
-export default async function handler(req, res) {
-  // === PERUBAHAN UTAMA: Baca URL dari Environment Variable ===
-  const ngrokHlsUrl = process.env.NEXT_PUBLIC_NGROK_STREAM_URL;
+// Pastikan URL di sini sudah benar, tetapi sebaiknya kita gunakan Environment Variable
+// Ini BUKAN URL MJPEG/HLS, ini adalah URL dasar dari NGINX di port 8088
+const NGROK_TARGET_URL = "https://jensen-zoonal-terresa.ngrok-free.dev/live/playlist.m3u8";
 
-  // Cek apakah variabelnya ada, sebagai pengaman
-  if (!ngrokHlsUrl) {
-    console.error("CRITICAL: NEXT_PUBLIC_NGROK_STREAM_URL environment variable is not set!");
-    return res.status(500).json({ error: 'Server configuration error.' });
-  }
+export default async function handler(req, res) {
+  console.log("Proxy API hit! Fetching stream from ngrok...");
 
   try {
     const response = await axios({
       method: 'get',
-      url: ngrokHlsUrl,
+      url: NGROK_TARGET_URL,
       responseType: 'stream',
       headers: {
-        'ngrok-skip-browser-warning': 'true' 
+        // INILAH KUNCINYA: Menambahkan header untuk melewati peringatan ngrok
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 
-    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    // Memberi tahu browser bahwa kita mengirim stream video
+    res.setHeader('Content-Type', response.headers['content-type']);
+    
+    // "Menyalurkan" data stream dari ngrok langsung ke respons browser
     response.data.pipe(res);
 
   } catch (error) {
-    console.error("Error proxying HLS stream:", error.message);
-    res.status(500).json({ error: 'Failed to proxy HLS stream.' });
+    console.error("[JATO DASHBOARD API ERROR] Failed to proxy stream:", error.message);
+    res.status(500).json({ 
+      error: 'Failed to connect to the backend stream.', 
+      details: 'Please ensure the ngrok and ffmpeg/nginx services are running correctly.'
+    });
   }
 }
