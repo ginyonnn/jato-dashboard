@@ -9,8 +9,12 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+
+// --- Impor 'dynamic' untuk memuat React Player dengan aman ---
 import dynamic from 'next/dynamic';
 
+// 'ssr: false' adalah perintah kunci. Ia memberitahu Next.js untuk
+// TIDAK mencoba me-render komponen ini di sisi server selama build.
 const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
 
 // --- BAGIAN 2: Konfigurasi Firebase ---
@@ -82,19 +86,7 @@ export default function Dashboard() {
   const [status, setStatus] = useState(null);
   const [logs, setLogs] = useState([]);
   
-  // State untuk melacak apakah kita berada di sisi klien (wajib untuk video)
-  const [isClient, setIsClient] = useState(false);
-
-  // State untuk mencegah hydration error pada React Player
-  const [hasWindow, setHasWindow] = useState(false);
-
-  // --- STATE BARU UNTUK VIDEO PLAYER ---
-  const [isVideoReady, setIsVideoReady] = useState(false);
-  const [videoError, setVideoError] = useState(null);
-  
   useEffect(() => {
-    // Tandai bahwa kita sekarang berada di sisi klien setelah render pertama
-     setIsClient(true);
     // Jalankan listener Firebase
     const statusRef = ref(database, 'status');
     const logsQuery = query(ref(database, 'logs'), orderByChild('timestamp'), limitToLast(10));
@@ -104,11 +96,6 @@ export default function Dashboard() {
         setLogs(Object.values(snapshot.val()).reverse());
       }
     });
-
-    // Cek jika window sudah tersedia (untuk SSR)
-    if (typeof window !== "undefined") {
-        setHasWindow(true);
-    }
     
     return () => {
       unsubscribeStatus();
@@ -147,22 +134,18 @@ export default function Dashboard() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Live Camera Feed</h2>
           <div className="bg-black rounded-lg overflow-hidden border-2 border-gray-700 aspect-video relative flex items-center justify-center">
-            {/* 
-              Sekarang kita hanya render <ReactPlayer> jika 'isClient' adalah true.
-              Ini mencegahnya dirender di sisi server (saat 'build').
-            */}
-            {isClient ? (
+            
               <ReactPlayer
-                url="/api/video_feed" // Menggunakan API Proxy kita
-                playing={true} muted={true} controls={true} width="100%" height="100%"
-                onError={e => console.error('ReactPlayer Error:', e)}
-                // Menampilkan placeholder saat mem-buffer
-                fallback={<div className="flex items-center justify-center h-full"><p className="text-gray-400">Buffering stream...</p></div>}
-              />
-            ) : (
-              // Menampilkan ini selama Server-Side Rendering (sebelum hidrasi)
-              <div className="flex items-center justify-center h-full"><p className="text-gray-400">Loading Player...</p></div>
-            )}
+              url="/api/video_feed" // Biarkan ini sebagai placeholder untuk sekarang
+              playing={true}   
+              muted={true}     
+              controls={true}  
+              width="100%"
+              height="100%"
+              onError={e => console.error('ReactPlayer Error:', e)}
+              // Menampilkan placeholder saat mem-buffer atau saat SSR
+              fallback={<div className="flex items-center justify-center h-full"><p className="text-gray-400">Loading Player...</p></div>}
+            />
           </div>
         </div>
 
